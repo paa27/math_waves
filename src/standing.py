@@ -1,4 +1,6 @@
 #Standing waves in Python
+#TODO: use float64
+#TODO: reduce nummber of terms
 import numpy as np
 import pandas as pd
 from math import *
@@ -88,17 +90,20 @@ class Standing:
 		#absolute value of wave_number
 		try: 
 			len(vec)
-			return sum([np.absolute(self.k(v)) for v in vec])
+			return np.absolute(sum([self.k(v) for v in vec]))
 		except: return np.absolute(self.k(vec)) #TODO: absolute function not what we want
 	def T(self,vec):
 		#period
 		return tanh(self._k(vec)*self._h)
 	def g(self,vec,t):
 		#gravity
-		if (self.force_eps and self.force_del)==0:
+		try:
+			if (self.force_eps and self.force_del)==0:
+				return self.g0*(1+self.sigma/self.g0*self._k(vec)**2)
+			else:
+				return self.g0*(1+self.sigma/self.g0*self._k(vec)**2)+self.force_amp*cos(self.force_omega*t)
+		except:
 			return self.g0*(1+self.sigma/self.g0*self._k(vec)**2)
-		else:
-			return self.g0*(1+self.sigma/self.g0*self._k(vec)**2)+self.force_amp*cos(self.force_omega*t)
 	def omega(self,vec):
 		#frequency
 		return sqrt(self.g0*(1+self.sigma/self.g0*self._k(vec)**2)*self._k(vec)*self.T(vec))
@@ -135,7 +140,7 @@ class Standing:
 		elif n == 5:
 			s=0.0
 		elif n == 6:
-			s=-1/8.0*np.dot(self.k(vec[0]),self.k(vec[1]))*np.dot(self.k(vec[2]),self.k(vec[3]))*np.dot(self.k(vec[4]),self.k(vec[5]))
+			s=-1/8.0*self.sigma*np.dot(self.k(vec[0]),self.k(vec[1]))*np.dot(self.k(vec[2]),self.k(vec[3]))*np.dot(self.k(vec[4]),self.k(vec[5]))
 		else: s=0.0
 		return np.float64(s)
 	def alpha(self,n,vec):
@@ -144,6 +149,7 @@ class Standing:
 		h1[0],h2[0],h2[1]=-vec[0],vec[1],-vec[0]
 		return 1/2*(self.h(n+1,h1)+self.h(n+1,h2))
 	def beta(self,n,vec):
+		#TODO: check this function
 		beta=0
 		for i in range(2,len(vec)):
 			vector=vec[1:i+1]+[-vec[0]]+vec[i+1:]
@@ -151,7 +157,7 @@ class Standing:
 		return -1/2*beta
 	def gamma(self,n,vec):
 		gamma=0
-		for i in range(1,len(vec)):
+		for i in range(1,len(vec)+1):
 			vector=vec[1:i]+[-vec[0]]+vec[i:]
 			gamma=gamma+self.s(n+1,vector)
 		return -1/2*gamma
@@ -194,11 +200,11 @@ class Standing:
 		f = [[0,0] for n in range(len(self._js))]
 		for j in range(len(f)):
 			f[j]=[self.a_prime(x,self.mode*(j+1),t),self.b_prime(x,self.mode*(j+1),t)]
-
 		return np.array(f).flatten()
 
 	def hamiltonian(self,x,t):
-		hamiltonian = 0.0
+		x = [[x[n],x[n+1]] for n in range(0,len(x),2)]
+		hamiltonian = np.float64(0.0)
 		for n in range(2,self.max_n+2):
 			if n==2:
 				for vec in self.deltas_h[n]:
@@ -212,7 +218,7 @@ class Standing:
 		return 0.5*hamiltonian
 
 	def solve(self,dt=0.01,N=1000,x0=np.array(None),
-		forcing={'epsilon':0,'delta':0,'j':1},method='homemade'):
+		forcing={'epsilon':0,'delta':0,'j':1},h_freq=100,method='homemade'):
 		#Solved by employing RK4 method
 		self.force_eps = forcing['epsilon']
 		self.force_del = forcing['delta']
@@ -221,13 +227,13 @@ class Standing:
 			self.force_omega = self.omega(self.force_j)/sqrt(self.force_del)
 			self.force_amp = self.force_eps*self.force_omega**2/(self._k(self.force_j)*self.T(self.force_j))
 
-		ts = np.linspace(0.0,(N-1)*dt,num=N)
+		ts = np.linspace(0.0,(N-1)*dt,num=N,dtype='float64')
 
 		if method=='homemade':
 			if x0.all()==None: 
 				x0 = [0.001,0.0]+[0.0 for p in range(2*len(self._js)-2)]
-			x0=np.array(x0)
-			#hamiltonian = [self.hamiltonian(x0,ts[0])]
+				x0=np.float64(x0)
+			hamiltonian = [self.hamiltonian(x0,ts[0])]
 			sol = [x0]
 
 			for q in range(1,N):
@@ -240,18 +246,13 @@ class Standing:
 
 				xi = sol[q-1] + 1/6.0*(k1+2.0*k2+2.0*k3+k4)
 				sol.append(xi)
-				#hamiltonian.append(self.hamiltonian(xi,ti))
+				if q%h_freq==0:
+					hamiltonian.append(self.hamiltonian(xi,ti))
+				else:
+					hamiltonian.append(hamiltonian[q-1])
 
-			return sol,ts
+			return sol,ts,hamiltonian
 
-		if method=='scipy':
-			if x0.all()==None: 
-				x0 = [0.001,0.0]+[0.0 for p in range(2*len(self._js)-2)]
-			x0 = np.array(x0)
-			ts=[ts[0],ts[-1]]
-			sol = solve_ivp(self.f,ts,x0,max_step=dt)
-
-			return sol['y'],sol['t']
 
 
 
