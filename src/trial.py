@@ -8,11 +8,33 @@ from math import pi,sqrt,ceil,cos
 import numpy as np
 from scipy.signal import hilbert
 from scipy.io import loadmat
-
-wave = Standing(mode=1,max_order=3,harmonics=3,
+'''
+wave = Standing(mode=1,max_order=1,harmonics=1,
 	params={'h':3000.0,'g0':1.0,'sigma':1.0,'k0':pi})
 
-sol,ts = wave.solve(dt=0.01,N=1000)
+sol,ts = wave.solve(dt=0.001,N=100)
+
+A=0.0001*wave._k(1)
+sigma = sqrt(1 - 1/4.0*A**2 - 13/128.0*A**4)
+tsp = ts*(wave.g(1,0)*wave._k(1))**(0.5)
+a1 = (A + 3/32.0*A**3 - 137/3072.0*A**5)*np.cos(sigma*tsp) +\
+(1/16.0*A**3 - 11/5376.0*A**5)*np.cos(3*sigma*tsp) +\
+163/21504.0*A**5*np.cos(5*sigma*tsp)
+a1 = 1/wave._k(1)*a1
+
+wave5 = Standing(mode=1,max_order=5,harmonics=5,
+	params={'h':3000.0,'g0':1.0,'sigma':1.0,'k0':pi})
+
+sol5,ts5 = wave5.solve(dt=0.001,N=100,x0=np.float64([a1[0],0,0,0,0,0,0,0,0,0]))
+
+f1,ax1 = plt.subplots()
+ax1.plot(ts,a1,label='exact')
+ax1.plot(ts5,[sol5[i][0] for i in range(len(sol5))],label='num')
+plt.legend()
+plt.show()
+
+
+pdb.set_trace()
 
 xs = np.linspace(0,pi/wave.k0,100)
 plt.figure()
@@ -35,9 +57,9 @@ plt.show()
 
 
 operations = []
-for order in range(1,6):
+for order in range(1,2):
 
-	wave = Standing(mode=1,max_order=order,harmonics=order,
+	wave = Standing(mode=1,max_order=5,harmonics=7,
 		params={'h':3000.0,'g0':1.0,'sigma':1.0,'k0':pi})
 
 	my_dict={}
@@ -53,11 +75,12 @@ for order in range(1,6):
 	ops = ops*2*wave.harmonics
 	operations.append(ops)
 
-plt.plot(range(1,6),operations)
-plt.xlabel('Order')
-plt.ylabel('# of operations')
-plt.show()
-'''
+print(operations)
+#plt.plot(range(1,6),operations)
+#plt.xlabel('Order')
+#plt.ylabel('# of operations')
+#plt.show()
+
 
 
 '''

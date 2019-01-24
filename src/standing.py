@@ -128,7 +128,7 @@ class Standing:
 				self._k(vec[1])*self.T(vec[1])*self._k([vec[1],vec[3]])*self.T([vec[1],vec[3]])*self._k([vec[1],vec[3],vec[4]])*self.T([vec[1],vec[3],vec[4]])+\
 				(1/3.0*self._k(vec[1])**2-self._k([vec[1],vec[3]])**2)*self._k(vec[0])*self.T(vec[0])*self._k(vec[1])*self.T(vec[1])*\
 				self._k([vec[0],vec[2]])*self.T([vec[0],vec[2]])+0.25*self._k(vec[0])**2*self._k(vec[1])**2*self._k([vec[1],vec[4],vec[5]])*\
-				self.T([vec[1],vec[4],vec[5]])+self._k(vec[0])**2*self._k([vec[0],vec[2],vec[3]])**2*self._k(vec[1])*self.T(vec[1])\
+				self.T([vec[1],vec[4],vec[5]])+0.5*self._k(vec[0])**2*self._k([vec[0],vec[2],vec[3]])**2*self._k(vec[1])*self.T(vec[1])\
 				-1/12.0*self._k(vec[0])**4*self._k(vec[1])*self.T(vec[1]))
 		else: h=0.0
 		return np.float64(h) 
@@ -149,7 +149,6 @@ class Standing:
 		h1[0],h2[0],h2[1]=-vec[0],vec[1],-vec[0]
 		return 1/2*(self.h(n+1,h1)+self.h(n+1,h2))
 	def beta(self,n,vec):
-		#TODO: check this function
 		beta=0
 		for i in range(2,len(vec)):
 			vector=vec[1:i+1]+[-vec[0]]+vec[i+1:]
