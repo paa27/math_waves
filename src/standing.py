@@ -1,8 +1,7 @@
 #Standing waves in Python
 #TODO: use float64
-#TODO: reduce nummber of terms
+#TODO: reduce number of terms
 import numpy as np
-import pandas as pd
 from math import *
 import itertools as it
 from scipy.integrate import solve_ivp
