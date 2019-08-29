@@ -1,5 +1,7 @@
 #Standing waves in Python
-#TODO: reduce number of terms
+#TODO: Add viscosities
+
+
 import numpy as np
 from math import *
 import itertools as it
@@ -12,9 +14,13 @@ import collections
 compare = lambda x, y: collections.Counter(x) == collections.Counter(y)
 
 def modes(sol):
+	'''Helper function to unpack Standing.solve() output'''
+
 	return np.float64([[sol['y'][i][n] for i in range(len(sol['y']))] for n in range(len(sol['y'][0]))])
 
 def phase(sol):
+	'''Helper function for phase plane plots of Standing.solve() output'''
+
 	import matplotlib.pyplot as plt
 	mode = modes(sol)
 	size = int(len(mode)/2)
@@ -28,9 +34,62 @@ def phase(sol):
 
 	return fig, axes
 
+
+def to_orig_forcings(Standing,phi,beta,Delta,F):
+	'''Helper function converter
+
+	Takes:
+	phi-beta parametrized forcing (amplitude sys) 
+	Returns:
+	amplitude, frequency parametrized forcing (original sys)
+	'''
+
+	j = Standing.mode
+
+	F1 = F*cos(phi)
+	F2 = F*sin(phi)
+
+	f1 = 4*F1*Standing.g(j)/Standing.omega(j)
+	f2 = 2*F2*Standing.g(2*j)/Standing.omega(j)
+
+	w1 = 2*Standing.omega(j)*(1+beta*F/Standing.omega(j))
+	w2 = 2*w1
+
+	return [[f1,w1,0],[f2,w2,Delta]]
+
+def to_orig_ic(Standing,phi,F,pq):
+	'''Helper function converter
+
+	Takes:
+	Initial conditions in amplitude sys
+	Returns:
+	Initial conditions in original sys
+
+	pq: numpy array: [pj,qj,p2j,q2j]
+	'''
+
+	j = Standing.mode
+
+	C1 = Standing._k(j)**2/(2*Standing.omega(j))*(
+		2*Standing.g(2*j)+Standing.g(j)+Standing.g(j)*Standing.T(j)**2-
+		2*Standing.g(2*j)*Standing.T(j)*Standing.T(2*j))
+	C2 = C1*Standing.g(j)/Standing.g(2*j)
+
+	aj = 2*sqrt(F**2/(C1*C2))*pq[0]
+	bj = -2*sqrt(F**2/(C1*C2))*Standing.g(j)/Standing.omega(j)*pq[1]
+	a2j = 2*F/C1*pq[2]
+	b2j = -2*F/C1*Standing.g(2*j)/Standing.omega(2*j)*pq[3]
+
+	return np.float64([aj,bj,a2j,b2j])
+
 #Main Class:
 
-class StandingSim:
+class Standing:
+	'''Main class
+
+	Allows to create a Standing wave object.
+	'''
+
 	def __init__(self,max_order=2,mode=1,harmonics=2,
 		params={'h':1000.0,'g0':1.0,'sigma':1.0,'k0':pi}):
 
@@ -134,7 +193,7 @@ class StandingSim:
 		return self.g0*(1+self.sigma/self.g0*self._k(vec)**2)
 	def G(self,vec,t):
 		#gravity with forcing
-		return self.g(vec)+sum([j[0]*cos(j[1]*t) for j in self.forcing]) 
+		return self.g(vec)+sum([j[0]*cos(j[1]*t+j[2]) for j in self.forcing]) 
 
 	def omega(self,vec):
 		#frequency
@@ -249,10 +308,12 @@ class StandingSim:
 		return 0.5*hamiltonian
 
 	def solve(self,dt=0.01,N=1000,x0=np.array(None),
-		forcing=[[0,0]],h_freq=100,method='homemade'):
+		forcing=[[0,0,0]],h_freq=100,method='homemade'):
 		#Solved by employing RK4 method
 		
-		#Forcing parameter allows to input amplitude, frequency pairs for a linear combination of cosines that act as forcing function
+		#Forcing parameter allows to input amplitude, frequency, phase triplets
+		#for a linear combination of cosines that act as forcing function.
+
 		self.forcing = forcing
 
 		ts = np.linspace(0.0,(N-1)*dt,num=N,dtype='float64')
@@ -282,7 +343,12 @@ class StandingSim:
 			return {'y':sol,'t':ts,'H':hamiltonian}
 
 
-class Standing:
+class StandingOld:
+	'''Main class (deprecated)
+
+	Allows to create a Standing wave object.
+	'''
+
 	def __init__(self,max_order=2,mode=1,harmonics=2,
 		params={'h':1000.0,'g0':1.0,'sigma':1.0,'k0':pi}):
 
